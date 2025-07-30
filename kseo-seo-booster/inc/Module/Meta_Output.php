@@ -9,10 +9,17 @@
 
 namespace KSEO\SEO_Booster\Module;
 
+/**
+ * Meta Output Module Class
+ * 
+ * @since 2.0.0
+ */
 class Meta_Output {
     
     /**
      * Initialize the meta output module
+     * 
+     * @since 2.0.0
      */
     public function __construct() {
         // Meta output is handled by the main Plugin class
@@ -20,6 +27,8 @@ class Meta_Output {
     
     /**
      * Output meta tags to the frontend
+     * 
+     * @since 2.0.0
      */
     public function output() {
         // Only output on single posts/pages
@@ -28,7 +37,7 @@ class Meta_Output {
         }
         
         global $post;
-        if (!$post) {
+        if (!$post || !is_object($post)) {
             return;
         }
         
@@ -49,7 +58,7 @@ class Meta_Output {
         // Generate meta tags
         $meta_tags = $this->generate_meta_tags($post);
         
-        // Cache the meta tags
+        // Cache the meta tags for 30 minutes
         $this->cache_meta_tags($post->ID, $meta_tags);
         
         // Output the meta tags
@@ -59,10 +68,11 @@ class Meta_Output {
     /**
      * Generate meta tags for a post
      * 
-     * @param WP_Post $post
-     * @return string
+     * @since 2.0.0
+     * @param \WP_Post $post The post object.
+     * @return string The generated meta tags HTML.
      */
-    private function generate_meta_tags($post) {
+    public function generate_meta_tags($post) {
         $meta_tags = '';
         
         // Get SEO data
@@ -72,115 +82,226 @@ class Meta_Output {
         $seo_focus_keyword = get_post_meta($post->ID, '_kseo_focus_keyword', true);
         $nofollow = get_post_meta($post->ID, '_kseo_nofollow', true);
         
-        // Title tag
-        if ($seo_title) {
-            $meta_tags .= '<title>' . esc_html($seo_title) . '</title>' . "\n";
+        // Title tag - use custom SEO title or fallback to post title
+        if (!empty($seo_title)) {
+            $title = $seo_title;
         } else {
-            $meta_tags .= '<title>' . esc_html(get_the_title($post->ID)) . ' - ' . esc_html(get_bloginfo('name')) . '</title>' . "\n";
+            $title = get_the_title($post->ID);
         }
         
-        // Meta description
-        if ($seo_description) {
-            $meta_tags .= '<meta name="description" content="' . esc_attr($seo_description) . '" />' . "\n";
+        // Add site name to title if not already present
+        $site_name = get_bloginfo('name');
+        if (!empty($site_name) && strpos($title, $site_name) === false) {
+            $title = $title . ' - ' . $site_name;
+        }
+        
+        $meta_tags .= '<title>' . esc_html($title) . '</title>' . "\n";
+        
+        // Meta description - use custom SEO description or fallback to excerpt
+        if (!empty($seo_description)) {
+            $description = $seo_description;
         } else {
-            $excerpt = wp_trim_words(get_the_excerpt($post->ID), 25, '...');
-            if ($excerpt) {
-                $meta_tags .= '<meta name="description" content="' . esc_attr($excerpt) . '" />' . "\n";
+            $excerpt = get_the_excerpt($post->ID);
+            if (!empty($excerpt)) {
+                $description = wp_trim_words($excerpt, 25, '...');
+            } else {
+                $content = wp_strip_all_tags(get_post_field('post_content', $post->ID));
+                $description = wp_trim_words($content, 25, '...');
             }
         }
         
+        if (!empty($description)) {
+            $meta_tags .= '<meta name="description" content="' . esc_attr($description) . '" />' . "\n";
+        }
+        
         // Keywords
-        if ($seo_keywords) {
+        if (!empty($seo_keywords)) {
             $meta_tags .= '<meta name="keywords" content="' . esc_attr($seo_keywords) . '" />' . "\n";
         }
         
         // Focus keyword
-        if ($seo_focus_keyword) {
+        if (!empty($seo_focus_keyword)) {
             $meta_tags .= '<meta name="focus-keyword" content="' . esc_attr($seo_focus_keyword) . '" />' . "\n";
         }
         
-        // Robots meta
-        $robots_content = 'index';
-        if ($nofollow === '1') {
-            $robots_content .= ', nofollow';
-        } else {
-            $robots_content .= ', follow';
-        }
-        $meta_tags .= '<meta name="robots" content="' . esc_attr($robots_content) . '" />' . "\n";
-        
         // Canonical URL
         $canonical_url = get_permalink($post->ID);
-        $meta_tags .= '<link rel="canonical" href="' . esc_url($canonical_url) . '" />' . "\n";
-        
-        // Author
-        $author = get_the_author_meta('display_name', $post->post_author);
-        if ($author) {
-            $meta_tags .= '<meta name="author" content="' . esc_attr($author) . '" />' . "\n";
+        if (!empty($canonical_url)) {
+            $meta_tags .= '<link rel="canonical" href="' . esc_url($canonical_url) . '" />' . "\n";
         }
         
-        // Publication date
-        $published_date = get_the_date('c', $post->ID);
-        $meta_tags .= '<meta property="article:published_time" content="' . esc_attr($published_date) . '" />' . "\n";
+        // Robots meta tag
+        $robots_content = array();
         
-        // Modified date
-        $modified_date = get_the_modified_date('c', $post->ID);
-        $meta_tags .= '<meta property="article:modified_time" content="' . esc_attr($modified_date) . '" />' . "\n";
-        
-        // Article type
-        $meta_tags .= '<meta property="article:type" content="article" />' . "\n";
-        
-        // Article section
-        $categories = get_the_category($post->ID);
-        if (!empty($categories)) {
-            $meta_tags .= '<meta property="article:section" content="' . esc_attr($categories[0]->name) . '" />' . "\n";
+        if ($nofollow === '1') {
+            $robots_content[] = 'nofollow';
         }
         
-        // Article tags
-        $tags = get_the_tags($post->ID);
-        if ($tags) {
-            foreach ($tags as $tag) {
-                $meta_tags .= '<meta property="article:tag" content="' . esc_attr($tag->name) . '" />' . "\n";
+        // Add noarchive for certain post types if needed
+        $post_type = get_post_type($post->ID);
+        if (in_array($post_type, array('attachment', 'revision'), true)) {
+            $robots_content[] = 'noarchive';
+        }
+        
+        if (!empty($robots_content)) {
+            $meta_tags .= '<meta name="robots" content="' . esc_attr(implode(',', $robots_content)) . '" />' . "\n";
+        }
+        
+        // Author meta
+        $author_id = get_post_field('post_author', $post->ID);
+        if ($author_id) {
+            $author_name = get_the_author_meta('display_name', $author_id);
+            if (!empty($author_name)) {
+                $meta_tags .= '<meta name="author" content="' . esc_attr($author_name) . '" />' . "\n";
             }
         }
         
-        // Allow other modules to add meta tags
-        $meta_tags = apply_filters('kseo_meta_tags', $meta_tags, $post);
+        // Open Graph tags
+        $meta_tags .= $this->generate_og_tags($post, $title, $description);
+        
+        // Twitter Card tags
+        $meta_tags .= $this->generate_twitter_tags($post, $title, $description);
+        
+        // Allow filtering of meta tags
+        $meta_tags = apply_filters('kseo_meta_data', $meta_tags, $post->ID);
         
         return $meta_tags;
     }
     
     /**
-     * Get cached meta tags
+     * Generate Open Graph tags
      * 
-     * @param int $post_id
-     * @return string|false
+     * @since 2.0.0
+     * @param \WP_Post $post The post object.
+     * @param string   $title The title.
+     * @param string   $description The description.
+     * @return string The Open Graph tags HTML.
      */
-    private function get_cached_meta_tags($post_id) {
-        $cache_key = 'kseo_meta_' . $post_id;
-        $cached = get_transient($cache_key);
+    private function generate_og_tags($post, $title, $description) {
+        $og_tags = '';
         
-        if ($cached !== false) {
-            return $cached;
+        // Basic OG tags
+        $og_tags .= '<meta property="og:type" content="article" />' . "\n";
+        $og_tags .= '<meta property="og:title" content="' . esc_attr($title) . '" />' . "\n";
+        
+        if (!empty($description)) {
+            $og_tags .= '<meta property="og:description" content="' . esc_attr($description) . '" />' . "\n";
         }
         
-        return false;
+        $og_tags .= '<meta property="og:url" content="' . esc_url(get_permalink($post->ID)) . '" />' . "\n";
+        $og_tags .= '<meta property="og:site_name" content="' . esc_attr(get_bloginfo('name')) . '" />' . "\n";
+        
+        // Featured image
+        $featured_image_id = get_post_thumbnail_id($post->ID);
+        if ($featured_image_id) {
+            $featured_image_url = wp_get_attachment_image_url($featured_image_id, 'large');
+            if ($featured_image_url) {
+                $og_tags .= '<meta property="og:image" content="' . esc_url($featured_image_url) . '" />' . "\n";
+                
+                // Get image dimensions
+                $image_data = wp_get_attachment_image_src($featured_image_id, 'large');
+                if ($image_data && isset($image_data[1]) && isset($image_data[2])) {
+                    $og_tags .= '<meta property="og:image:width" content="' . esc_attr($image_data[1]) . '" />' . "\n";
+                    $og_tags .= '<meta property="og:image:height" content="' . esc_attr($image_data[2]) . '" />' . "\n";
+                }
+            }
+        }
+        
+        // Article specific tags
+        $og_tags .= '<meta property="article:published_time" content="' . esc_attr(get_the_date('c', $post->ID)) . '" />' . "\n";
+        $og_tags .= '<meta property="article:modified_time" content="' . esc_attr(get_the_modified_date('c', $post->ID)) . '" />' . "\n";
+        
+        // Author
+        $author_id = get_post_field('post_author', $post->ID);
+        if ($author_id) {
+            $author_name = get_the_author_meta('display_name', $author_id);
+            if (!empty($author_name)) {
+                $og_tags .= '<meta property="article:author" content="' . esc_attr($author_name) . '" />' . "\n";
+            }
+        }
+        
+        return $og_tags;
     }
     
     /**
-     * Cache meta tags
+     * Generate Twitter Card tags
      * 
-     * @param int $post_id
-     * @param string $meta_tags
+     * @since 2.0.0
+     * @param \WP_Post $post The post object.
+     * @param string   $title The title.
+     * @param string   $description The description.
+     * @return string The Twitter Card tags HTML.
      */
-    private function cache_meta_tags($post_id, $meta_tags) {
+    private function generate_twitter_tags($post, $title, $description) {
+        $twitter_tags = '';
+        
+        // Twitter Card type
+        $featured_image_id = get_post_thumbnail_id($post->ID);
+        $card_type = $featured_image_id ? 'summary_large_image' : 'summary';
+        $twitter_tags .= '<meta name="twitter:card" content="' . esc_attr($card_type) . '" />' . "\n";
+        
+        // Twitter site
+        $twitter_site = get_option('kseo_twitter_site', '');
+        if (!empty($twitter_site)) {
+            $twitter_tags .= '<meta name="twitter:site" content="' . esc_attr($twitter_site) . '" />' . "\n";
+        }
+        
+        // Twitter creator
+        $author_id = get_post_field('post_author', $post->ID);
+        if ($author_id) {
+            $twitter_creator = get_the_author_meta('twitter', $author_id);
+            if (!empty($twitter_creator)) {
+                $twitter_tags .= '<meta name="twitter:creator" content="' . esc_attr($twitter_creator) . '" />' . "\n";
+            }
+        }
+        
+        // Title and description
+        $twitter_tags .= '<meta name="twitter:title" content="' . esc_attr($title) . '" />' . "\n";
+        
+        if (!empty($description)) {
+            $twitter_tags .= '<meta name="twitter:description" content="' . esc_attr($description) . '" />' . "\n";
+        }
+        
+        // Image
+        if ($featured_image_id) {
+            $featured_image_url = wp_get_attachment_image_url($featured_image_id, 'large');
+            if ($featured_image_url) {
+                $twitter_tags .= '<meta name="twitter:image" content="' . esc_url($featured_image_url) . '" />' . "\n";
+            }
+        }
+        
+        return $twitter_tags;
+    }
+    
+    /**
+     * Get cached meta tags
+     * 
+     * @since 2.0.0
+     * @param int $post_id The post ID.
+     * @return string|false The cached meta tags or false if not found.
+     */
+    private function get_cached_meta_tags($post_id) {
         $cache_key = 'kseo_meta_' . $post_id;
-        set_transient($cache_key, $meta_tags, 30 * MINUTE_IN_SECONDS); // Cache for 30 minutes
+        return get_transient($cache_key);
+    }
+    
+    /**
+     * Cache meta tags for 30 minutes
+     * 
+     * @since 2.0.0
+     * @param int    $post_id The post ID.
+     * @param string $meta_tags The meta tags HTML.
+     */
+    public function cache_meta_tags($post_id, $meta_tags) {
+        $cache_key = 'kseo_meta_' . $post_id;
+        set_transient($cache_key, $meta_tags, 30 * MINUTE_IN_SECONDS);
     }
     
     /**
      * Clear cache for a post
      * 
-     * @param int $post_id
+     * @since 2.0.0
+     * @param int $post_id The post ID.
      */
     public function clear_cache($post_id) {
         $cache_key = 'kseo_meta_' . $post_id;
@@ -190,8 +311,9 @@ class Meta_Output {
     /**
      * Get meta data for a post
      * 
-     * @param int $post_id
-     * @return array
+     * @since 2.0.0
+     * @param int $post_id The post ID.
+     * @return array The meta data array.
      */
     public function get_meta_data($post_id) {
         return array(
@@ -200,15 +322,16 @@ class Meta_Output {
             'keywords' => get_post_meta($post_id, '_kseo_keywords', true),
             'focus_keyword' => get_post_meta($post_id, '_kseo_focus_keyword', true),
             'noindex' => get_post_meta($post_id, '_kseo_noindex', true),
-            'nofollow' => get_post_meta($post_id, '_kseo_nofollow', true)
+            'nofollow' => get_post_meta($post_id, '_kseo_nofollow', true),
         );
     }
     
     /**
      * Update meta data for a post
      * 
-     * @param int $post_id
-     * @param array $meta_data
+     * @since 2.0.0
+     * @param int   $post_id The post ID.
+     * @param array $meta_data The meta data array.
      */
     public function update_meta_data($post_id, $meta_data) {
         if (isset($meta_data['title'])) {

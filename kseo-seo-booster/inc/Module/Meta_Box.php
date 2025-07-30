@@ -9,10 +9,17 @@
 
 namespace KSEO\SEO_Booster\Module;
 
+/**
+ * Meta Box Module Class
+ * 
+ * @since 2.0.0
+ */
 class Meta_Box {
     
     /**
      * Initialize the meta box module
+     * 
+     * @since 2.0.0
      */
     public function __construct() {
         // Meta box is handled by the main Plugin class
@@ -21,10 +28,15 @@ class Meta_Box {
     /**
      * Render the meta box
      * 
-     * @param WP_Post $post
+     * @since 2.0.0
+     * @param \WP_Post $post The post object.
      */
     public function render($post) {
-        // Get current meta values
+        if (!$post || !is_object($post)) {
+            return;
+        }
+        
+        // Get current meta values with proper defaults
         $seo_title = get_post_meta($post->ID, '_kseo_title', true);
         $seo_description = get_post_meta($post->ID, '_kseo_description', true);
         $seo_keywords = get_post_meta($post->ID, '_kseo_keywords', true);
@@ -32,61 +44,61 @@ class Meta_Box {
         $seo_noindex = get_post_meta($post->ID, '_kseo_noindex', true);
         $seo_nofollow = get_post_meta($post->ID, '_kseo_nofollow', true);
         
-        // Add nonce field
+        // Add nonce field for security
         wp_nonce_field('kseo_meta_box', 'kseo_meta_box_nonce');
         
         ?>
         <div class="kseo-meta-box">
             <div class="kseo-tabs">
-                <button type="button" class="kseo-tab-button active" data-tab="basic"><?php _e('Basic SEO', 'kseo-seo-booster'); ?></button>
-                <button type="button" class="kseo-tab-button" data-tab="advanced"><?php _e('Advanced', 'kseo-seo-booster'); ?></button>
-                <button type="button" class="kseo-tab-button" data-tab="preview"><?php _e('Preview', 'kseo-seo-booster'); ?></button>
+                <button type="button" class="kseo-tab-button active" data-tab="basic"><?php esc_html_e('Basic SEO', 'kseo-seo-booster'); ?></button>
+                <button type="button" class="kseo-tab-button" data-tab="advanced"><?php esc_html_e('Advanced', 'kseo-seo-booster'); ?></button>
+                <button type="button" class="kseo-tab-button" data-tab="preview"><?php esc_html_e('Preview', 'kseo-seo-booster'); ?></button>
             </div>
             
             <div class="kseo-tab-content active" id="basic-tab">
                 <table class="form-table">
                     <tr>
                         <th scope="row">
-                            <label for="kseo_title"><?php _e('SEO Title', 'kseo-seo-booster'); ?></label>
+                            <label for="kseo_title"><?php esc_html_e('SEO Title', 'kseo-seo-booster'); ?></label>
                         </th>
                         <td>
                             <input type="text" id="kseo_title" name="kseo_title" value="<?php echo esc_attr($seo_title); ?>" class="regular-text" maxlength="60" />
                             <span class="kseo-character-count">0/60</span>
-                            <button type="button" class="button kseo-generate-btn" data-field="title"><?php _e('Generate with AI', 'kseo-seo-booster'); ?></button>
-                            <p class="description"><?php _e('The title that appears in search results. Keep it under 60 characters.', 'kseo-seo-booster'); ?></p>
+                            <button type="button" class="button kseo-generate-btn" data-field="title"><?php esc_html_e('Generate with AI', 'kseo-seo-booster'); ?></button>
+                            <p class="description"><?php esc_html_e('The title that appears in search results. Keep it under 60 characters.', 'kseo-seo-booster'); ?></p>
                         </td>
                     </tr>
                     
                     <tr>
                         <th scope="row">
-                            <label for="kseo_description"><?php _e('Meta Description', 'kseo-seo-booster'); ?></label>
+                            <label for="kseo_description"><?php esc_html_e('Meta Description', 'kseo-seo-booster'); ?></label>
                         </th>
                         <td>
                             <textarea id="kseo_description" name="kseo_description" rows="3" class="large-text" maxlength="160"><?php echo esc_textarea($seo_description); ?></textarea>
                             <span class="kseo-character-count">0/160</span>
-                            <button type="button" class="button kseo-generate-btn" data-field="description"><?php _e('Generate with AI', 'kseo-seo-booster'); ?></button>
-                            <p class="description"><?php _e('The description that appears in search results. Keep it under 160 characters.', 'kseo-seo-booster'); ?></p>
+                            <button type="button" class="button kseo-generate-btn" data-field="description"><?php esc_html_e('Generate with AI', 'kseo-seo-booster'); ?></button>
+                            <p class="description"><?php esc_html_e('The description that appears in search results. Keep it under 160 characters.', 'kseo-seo-booster'); ?></p>
                         </td>
                     </tr>
                     
                     <tr>
                         <th scope="row">
-                            <label for="kseo_focus_keyword"><?php _e('Focus Keyword', 'kseo-seo-booster'); ?></label>
+                            <label for="kseo_focus_keyword"><?php esc_html_e('Focus Keyword', 'kseo-seo-booster'); ?></label>
                         </th>
                         <td>
                             <input type="text" id="kseo_focus_keyword" name="kseo_focus_keyword" value="<?php echo esc_attr($seo_focus_keyword); ?>" class="regular-text" />
-                            <button type="button" class="button kseo-suggest-btn"><?php _e('Get Suggestions', 'kseo-seo-booster'); ?></button>
-                            <p class="description"><?php _e('The main keyword you want to rank for.', 'kseo-seo-booster'); ?></p>
+                            <button type="button" class="button kseo-suggest-btn"><?php esc_html_e('Get Suggestions', 'kseo-seo-booster'); ?></button>
+                            <p class="description"><?php esc_html_e('The main keyword you want to rank for.', 'kseo-seo-booster'); ?></p>
                         </td>
                     </tr>
                     
                     <tr>
                         <th scope="row">
-                            <label for="kseo_keywords"><?php _e('Keywords', 'kseo-seo-booster'); ?></label>
+                            <label for="kseo_keywords"><?php esc_html_e('Keywords', 'kseo-seo-booster'); ?></label>
                         </th>
                         <td>
                             <input type="text" id="kseo_keywords" name="kseo_keywords" value="<?php echo esc_attr($seo_keywords); ?>" class="regular-text" />
-                            <p class="description"><?php _e('Additional keywords separated by commas.', 'kseo-seo-booster'); ?></p>
+                            <p class="description"><?php esc_html_e('Additional keywords separated by commas.', 'kseo-seo-booster'); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -96,24 +108,24 @@ class Meta_Box {
                 <table class="form-table">
                     <tr>
                         <th scope="row">
-                            <label for="kseo_noindex"><?php _e('Noindex', 'kseo-seo-booster'); ?></label>
+                            <label for="kseo_noindex"><?php esc_html_e('Noindex', 'kseo-seo-booster'); ?></label>
                         </th>
                         <td>
                             <label>
                                 <input type="checkbox" id="kseo_noindex" name="kseo_noindex" value="1" <?php checked($seo_noindex, '1'); ?> />
-                                <?php _e('Prevent search engines from indexing this page', 'kseo-seo-booster'); ?>
+                                <?php esc_html_e('Prevent search engines from indexing this page', 'kseo-seo-booster'); ?>
                             </label>
                         </td>
                     </tr>
                     
                     <tr>
                         <th scope="row">
-                            <label for="kseo_nofollow"><?php _e('Nofollow', 'kseo-seo-booster'); ?></label>
+                            <label for="kseo_nofollow"><?php esc_html_e('Nofollow', 'kseo-seo-booster'); ?></label>
                         </th>
                         <td>
                             <label>
                                 <input type="checkbox" id="kseo_nofollow" name="kseo_nofollow" value="1" <?php checked($seo_nofollow, '1'); ?> />
-                                <?php _e('Prevent search engines from following links on this page', 'kseo-seo-booster'); ?>
+                                <?php esc_html_e('Prevent search engines from following links on this page', 'kseo-seo-booster'); ?>
                             </label>
                         </td>
                     </tr>
@@ -122,7 +134,7 @@ class Meta_Box {
             
             <div class="kseo-tab-content" id="preview-tab">
                 <div class="kseo-snippet-preview">
-                    <h4><?php _e('Search Result Preview', 'kseo-seo-booster'); ?></h4>
+                    <h4><?php esc_html_e('Search Result Preview', 'kseo-seo-booster'); ?></h4>
                     <div class="kseo-snippet">
                         <div class="kseo-snippet-title" id="kseo-preview-title">
                             <?php echo $seo_title ? esc_html($seo_title) : esc_html(get_the_title($post->ID)); ?>
@@ -138,7 +150,7 @@ class Meta_Box {
             </div>
             
             <div class="kseo-meta-box-actions">
-                <button type="button" class="button button-primary kseo-generate-all-btn"><?php _e('Generate All with AI', 'kseo-seo-booster'); ?></button>
+                <button type="button" class="button button-primary kseo-generate-all-btn"><?php esc_html_e('Generate All with AI', 'kseo-seo-booster'); ?></button>
                 <span class="spinner" style="float: none; margin-top: 0;"></span>
             </div>
         </div>
@@ -192,7 +204,7 @@ class Meta_Box {
                         action: 'kseo_generate_meta',
                         nonce: kseo_ajax.nonce,
                         field: field,
-                        post_id: <?php echo $post->ID; ?>,
+                        post_id: <?php echo intval($post->ID); ?>,
                         post_title: '<?php echo esc_js(get_the_title($post->ID)); ?>',
                         post_content: '<?php echo esc_js(wp_strip_all_tags(get_post_field('post_content', $post->ID))); ?>'
                     },
@@ -236,7 +248,7 @@ class Meta_Box {
                         action: 'kseo_generate_meta',
                         nonce: kseo_ajax.nonce,
                         field: 'all',
-                        post_id: <?php echo $post->ID; ?>,
+                        post_id: <?php echo intval($post->ID); ?>,
                         post_title: '<?php echo esc_js(get_the_title($post->ID)); ?>',
                         post_content: '<?php echo esc_js(wp_strip_all_tags(get_post_field('post_content', $post->ID))); ?>'
                     },
@@ -274,7 +286,8 @@ class Meta_Box {
     /**
      * Save meta box data
      * 
-     * @param int $post_id
+     * @since 2.0.0
+     * @param int $post_id The post ID.
      */
     public function save($post_id) {
         // Security checks
@@ -325,8 +338,9 @@ class Meta_Box {
     /**
      * Save meta box data via AJAX
      * 
-     * @param array $data
-     * @return array
+     * @since 2.0.0
+     * @param array $data The data to save.
+     * @return array Response array.
      */
     public function save_ajax($data) {
         $post_id = intval($data['post_id']);
@@ -361,7 +375,8 @@ class Meta_Box {
     /**
      * Clear cache for a post
      * 
-     * @param int $post_id
+     * @since 2.0.0
+     * @param int $post_id The post ID.
      */
     private function clear_cache($post_id) {
         // Clear any caching plugins

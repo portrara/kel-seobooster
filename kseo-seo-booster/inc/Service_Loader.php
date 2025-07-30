@@ -9,6 +9,11 @@
 
 namespace KSEO\SEO_Booster;
 
+/**
+ * Service Loader Class
+ * 
+ * @since 2.0.0
+ */
 class Service_Loader {
     
     /**
@@ -39,13 +44,18 @@ class Service_Loader {
     
     /**
      * Initialize the service loader
+     * 
+     * @since 2.0.0
      */
     public function __construct() {
         $this->load_enabled_modules();
+        $this->register_wp_cli_commands();
     }
     
     /**
      * Load enabled modules based on settings
+     * 
+     * @since 2.0.0
      */
     private function load_enabled_modules() {
         $enabled_modules = get_option('kseo_modules', array());
@@ -65,10 +75,27 @@ class Service_Loader {
     }
     
     /**
+     * Register WP-CLI commands if WP_CLI exists
+     * 
+     * @since 2.0.0
+     */
+    private function register_wp_cli_commands() {
+        if (defined('WP_CLI') && WP_CLI && class_exists('WP_CLI')) {
+            $commands = new \KSEO\SEO_Booster\CLI\Commands();
+            
+            \WP_CLI::add_command('kseo regenerate_meta', array($commands, 'regenerate_meta'));
+            \WP_CLI::add_command('kseo regenerate_sitemap', array($commands, 'regenerate_sitemap'));
+            
+            error_log('KE SEO Booster Pro: WP-CLI commands registered');
+        }
+    }
+    
+    /**
      * Load a specific module
      * 
-     * @param string $module_key
-     * @param string $module_class
+     * @since 2.0.0
+     * @param string $module_key The module key.
+     * @param string $module_class The module class name.
      */
     private function load_module($module_key, $module_class) {
         try {
@@ -88,8 +115,9 @@ class Service_Loader {
     /**
      * Get a loaded module instance
      * 
-     * @param string $module_key
-     * @return object|null
+     * @since 2.0.0
+     * @param string $module_key The module key.
+     * @return object|null The module instance or null if not loaded.
      */
     public function get_module($module_key) {
         return isset($this->loaded_modules[$module_key]) ? $this->loaded_modules[$module_key] : null;
@@ -98,7 +126,8 @@ class Service_Loader {
     /**
      * Get all loaded modules
      * 
-     * @return array
+     * @since 2.0.0
+     * @return array The loaded modules array.
      */
     public function get_loaded_modules() {
         return $this->loaded_modules;
@@ -107,8 +136,9 @@ class Service_Loader {
     /**
      * Check if a module is loaded
      * 
-     * @param string $module_key
-     * @return bool
+     * @since 2.0.0
+     * @param string $module_key The module key.
+     * @return bool True if module is loaded, false otherwise.
      */
     public function is_module_loaded($module_key) {
         return isset($this->loaded_modules[$module_key]);
@@ -117,7 +147,8 @@ class Service_Loader {
     /**
      * Get available modules
      * 
-     * @return array
+     * @since 2.0.0
+     * @return array The available modules array.
      */
     public function get_available_modules() {
         return $this->modules;
