@@ -1,0 +1,177 @@
+/* KE SEO Booster Pro Admin Styles */
+
+.kseo-meta-box {
+    margin: 20px 0;
+}
+
+.kseo-tabs {
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 20px;
+}
+
+.kseo-tab-button {
+    background: #f1f1f1;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    padding: 10px 15px;
+    margin-right: 5px;
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+}
+
+.kseo-tab-button.active {
+    background: #fff;
+    border-bottom: 1px solid #fff;
+    margin-bottom: -1px;
+}
+
+.kseo-tab-content {
+    display: none;
+    padding: 20px 0;
+}
+
+.kseo-tab-content.active {
+    display: block;
+}
+
+.kseo-character-count {
+    margin-left: 10px;
+    font-size: 12px;
+    color: #666;
+}
+
+.kseo-character-count.over-limit {
+    color: #dc3232;
+}
+
+.kseo-generate-btn {
+    margin-left: 10px;
+}
+
+.kseo-meta-box-actions {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.kseo-snippet-preview {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 3px;
+}
+
+.kseo-snippet {
+    max-width: 600px;
+}
+
+.kseo-snippet-title {
+    color: #1a0dab;
+    font-size: 18px;
+    font-weight: normal;
+    margin-bottom: 5px;
+}
+
+.kseo-snippet-url {
+    color: #006621;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.kseo-snippet-description {
+    color: #545454;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Settings page styles */
+.kseo-settings-content {
+    margin-top: 20px;
+}
+
+.kseo-onboarding-wizard {
+    max-width: 800px;
+}
+
+.kseo-onboarding-steps {
+    margin-top: 30px;
+}
+
+.kseo-step {
+    display: none;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.kseo-step.active {
+    display: block;
+}
+
+.kseo-onboarding-completed {
+    text-align: center;
+    padding: 40px;
+    background: #f9f9f9;
+    border-radius: 5px;
+}
+
+/* Dashboard styles */
+.kseo-dashboard {
+    margin-top: 20px;
+}
+
+.kseo-stats {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.kseo-actions {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+/* Spinner styles */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+.spinner.is-active {
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .kseo-tab-button {
+        display: block;
+        margin-bottom: 5px;
+        border-radius: 3px;
+    }
+    
+    .kseo-tab-button.active {
+        margin-bottom: 5px;
+    }
+    
+    .kseo-generate-btn {
+        margin-left: 0;
+        margin-top: 10px;
+        display: block;
+    }
+} 
