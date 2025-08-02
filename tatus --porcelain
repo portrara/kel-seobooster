@@ -1,0 +1,5 @@
+[33m3926ff9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Add CI/CD workflow, WP-CLI commands, and fix syntax errors - Complete implementation with GitHub Actions, PHPCS compliance, and WP-CLI support
+[33macf254c[m[33m ([m[1;31mseoagency/main[m[33m, [m[1;31mseoagency/HEAD[m[33m)[m Add comprehensive README with usage examples and filter hooks
+[33m439fd8c[m Create KE SEO Booster Pro v2.0.0 - Full-featured WordPress SEO plugin
+[33mecfa6e2[m[33m ([m[1;33mtag: [m[1;33mv1.1.1[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix fatal error: Simplified plugin structure and removed esc_url() from define statements
+[33mbff7a2b[m[33m ([m[1;33mtag: [m[1;33mv1.1.0[m[33m)[m Restore plugin files for GitHub repository
