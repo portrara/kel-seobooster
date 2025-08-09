@@ -32,6 +32,7 @@ class Service_Loader {
         'ai_generator' => 'Module\AI_Generator',
         'bulk_audit' => 'Module\Bulk_Audit',
         'internal_link' => 'Module\Internal_Link',
+        'api' => 'Module\API',
         'settings' => 'Module\Settings'
     );
     
@@ -107,7 +108,7 @@ class Service_Loader {
             } else {
                 error_log("KE SEO Booster Pro: Module class {$full_class_name} not found");
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log("KE SEO Booster Pro: Failed to load module {$module_key}: " . $e->getMessage());
         }
     }

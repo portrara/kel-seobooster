@@ -98,7 +98,7 @@ class Commands {
                 $processed++;
                 $progress->tick();
                 
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 $errors++;
                 \WP_CLI::warning(sprintf('Error processing post %d: %s', $post_id, $e->getMessage()));
             }
@@ -193,7 +193,7 @@ class Commands {
                 $total_posts
             ));
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             \WP_CLI::error(sprintf('Error regenerating sitemap: %s', $e->getMessage()));
         }
     }
@@ -209,7 +209,7 @@ class Commands {
         try {
             $meta_output = new \KSEO\SEO_Booster\Module\Meta_Output();
             return $meta_output->generate_meta_tags($post);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             \WP_CLI::warning(sprintf('Error generating meta tags for post %d: %s', $post->ID, $e->getMessage()));
             return false;
         }

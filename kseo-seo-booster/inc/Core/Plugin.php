@@ -331,6 +331,9 @@ class Plugin {
      */
     public function ajax_generate_meta() {
         check_ajax_referer('kseo_nonce', 'nonce');
+        if (!current_user_can('kseo_optimize_content') && !current_user_can('edit_posts')) {
+            wp_send_json_error(__('Permission denied', 'kseo-seo-booster'));
+        }
         
         $ai_generator = $this->service_loader->get_module('ai_generator');
         if ($ai_generator) {
@@ -346,6 +349,9 @@ class Plugin {
      */
     public function ajax_save_meta() {
         check_ajax_referer('kseo_nonce', 'nonce');
+        if (!current_user_can('kseo_optimize_content') && !current_user_can('edit_posts')) {
+            wp_send_json_error(__('Permission denied', 'kseo-seo-booster'));
+        }
         
         $meta_box = $this->service_loader->get_module('meta_box');
         if ($meta_box) {
@@ -361,6 +367,9 @@ class Plugin {
      */
     public function ajax_get_keyword_suggestions() {
         check_ajax_referer('kseo_nonce', 'nonce');
+        if (!current_user_can('kseo_manage_settings') && !current_user_can('manage_options')) {
+            wp_send_json_error(__('Permission denied', 'kseo-seo-booster'));
+        }
         
         $keyword_suggest = $this->service_loader->get_module('keyword_suggest');
         if ($keyword_suggest) {
@@ -376,6 +385,9 @@ class Plugin {
      */
     public function ajax_bulk_audit() {
         check_ajax_referer('kseo_nonce', 'nonce');
+        if (!current_user_can('kseo_run_audits') && !current_user_can('manage_options')) {
+            wp_send_json_error(__('Permission denied', 'kseo-seo-booster'));
+        }
         
         $bulk_audit = $this->service_loader->get_module('bulk_audit');
         if ($bulk_audit) {

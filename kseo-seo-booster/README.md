@@ -120,6 +120,14 @@ The plugin is modular and you can enable/disable features:
 - Schema markup is cached per post
 - AI API calls are rate-limited and cached
 
+## Security & Compliance
+
+- Nonces for AJAX, capability checks on all admin actions
+- Prepared statements for DB, escaping output in views
+- API: Bearer tokens (no query string), RBAC, rate limiting
+- Secrets: Envelope encryption at rest (XChaCha20-Poly1305 if available). Store keys as constants: `KSEO_ACTIVE_KEY_ID`, `KSEO_APP_KEY_{ID}` (base64). Options are stored with `enc:` prefix and decrypted only at use time.
+- Key rotation: Set new `KSEO_APP_KEY_{NEW}` and switch `KSEO_ACTIVE_KEY_ID` to the new id; keep old keys defined for decrypt; re-encrypt on next save.
+
 ## Troubleshooting
 
 ### Common Issues

@@ -82,7 +82,7 @@ if ($memory_limit_bytes < 256 * 1024 * 1024) { // Less than 256MB
 // Safe autoloader with error handling
 try {
     require_once KSEO_PLUGIN_DIR . 'autoload.php';
-} catch (Exception $e) {
+} catch (\Exception $e) {
     kseo_handle_error('Failed to load autoloader: ' . $e->getMessage());
     return;
 }
@@ -113,7 +113,7 @@ function kseo_init() {
         // Log successful initialization
         error_log('KE SEO Booster Pro initialized successfully');
         
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         kseo_handle_error('Initialization failed: ' . $e->getMessage());
         
         // Attempt to deactivate the plugin to prevent further crashes
@@ -182,7 +182,8 @@ function kseo_activation() {
                 'keyword_suggest' => false,
                 'ai_generator' => false,
                 'bulk_audit' => false,
-                'internal_link' => false
+                'internal_link' => false,
+                'api' => true
             ),
             'kseo_post_types' => array('post', 'page'),
             'kseo_auto_generate' => true,
@@ -198,13 +199,27 @@ function kseo_activation() {
             }
         }
 
+        // Run installer to create/update tables
+        if (class_exists('KSEO\\SEO_Booster\\Core\\Installer')) {
+            KSEO\SEO_Booster\Core\Installer::install();
+        } else {
+            // Attempt to include installer if not loaded
+            $installer_path = KSEO_PLUGIN_DIR . 'inc/Core/Installer.php';
+            if (file_exists($installer_path)) {
+                require_once $installer_path;
+                if (class_exists('KSEO\\SEO_Booster\\Core\\Installer')) {
+                    KSEO\SEO_Booster\Core\Installer::install();
+                }
+            }
+        }
+
         // Flush rewrite rules
         flush_rewrite_rules();
 
         // Log successful activation
         error_log('KE SEO Booster Pro activated successfully');
         
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         error_log('KE SEO Booster Pro activation failed: ' . $e->getMessage());
         deactivate_plugins(plugin_basename(__FILE__));
         wp_die('KE SEO Booster Pro activation failed: ' . $e->getMessage());
@@ -221,8 +236,8 @@ function kseo_deactivation() {
         
         // Clear transients
         global $wpdb;
-        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_kseo_%'");
-        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_kseo_%'");
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", '_transient_kseo_%'));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", '_transient_timeout_kseo_%'));
         
         // Flush rewrite rules
         flush_rewrite_rules();
@@ -230,7 +245,7 @@ function kseo_deactivation() {
         // Log deactivation
         error_log('KE SEO Booster Pro deactivated');
         
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         error_log('KE SEO Booster Pro deactivation error: ' . $e->getMessage());
     }
 } 
