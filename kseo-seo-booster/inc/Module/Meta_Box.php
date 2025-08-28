@@ -151,6 +151,7 @@ class Meta_Box {
             
             <div class="kseo-meta-box-actions">
                 <button type="button" class="button button-primary kseo-generate-all-btn"><?php esc_html_e('Generate All with AI', 'kseo-seo-booster'); ?></button>
+                <button type="button" class="button kseo-apply-draft-btn"><?php esc_html_e('Apply as Draft', 'kseo-seo-booster'); ?></button>
                 <span class="spinner" style="float: none; margin-top: 0;"></span>
             </div>
         </div>
@@ -269,6 +270,41 @@ class Meta_Box {
                         alert(kseo_ajax.strings.error);
                     },
                     complete: function() {
+                        button.prop('disabled', false);
+                        spinner.removeClass('is-active');
+                    }
+                });
+            });
+            
+            // Apply as Draft
+            $('.kseo-apply-draft-btn').on('click', function() {
+                var button = $(this);
+                var spinner = button.siblings('.spinner');
+                button.prop('disabled', true);
+                spinner.addClass('is-active');
+                var recommendations = {
+                    title: $('#kseo_title').val() || $('#kseo-preview-title').text(),
+                    meta: { description: $('#kseo_description').val() || $('#kseo-preview-description').text() },
+                    outline: []
+                };
+                $('.kseo-tab-content#basic-tab h2').each(function(){ recommendations.outline.push({h2: $(this).text()}); });
+                $.ajax({
+                    url: kseo_ajax.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'kseo_ai_apply_draft',
+                        nonce: kseo_ajax.nonce,
+                        post_id: <?php echo intval($post->ID); ?>,
+                        recommendations: JSON.stringify(recommendations)
+                    },
+                    success: function(response){
+                        if (response.success) {
+                            alert('<?php echo esc_js(__('Draft created with recommendations.', 'kseo-seo-booster')); ?>');
+                        } else {
+                            alert(response.data || kseo_ajax.strings.error);
+                        }
+                    },
+                    complete: function(){
                         button.prop('disabled', false);
                         spinner.removeClass('is-active');
                     }

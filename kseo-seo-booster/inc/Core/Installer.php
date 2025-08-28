@@ -167,6 +167,44 @@ class Installer {
         foreach ($sql as $statement) {
             dbDelta($statement);
         }
+
+        // Create AI tables
+        $ai_keywords = $wpdb->prefix . 'kseo_ai_keywords';
+        $ai_events = $wpdb->prefix . 'kseo_ai_events';
+
+        $sql2 = [];
+        $sql2[] = "CREATE TABLE {$ai_keywords} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) unsigned NOT NULL,
+            seed varchar(255) NULL,
+            keywords longtext NULL,
+            analysis longtext NULL,
+            assignment longtext NULL,
+            score_before tinyint unsigned NULL,
+            score_after tinyint unsigned NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY idx_post_id (post_id),
+            KEY idx_created (created_at)
+        ) {$charset_collate};";
+
+        $sql2[] = "CREATE TABLE {$ai_events} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            type varchar(40) NOT NULL,
+            post_id bigint(20) unsigned NULL,
+            related_post_ids longtext NULL,
+            details longtext NOT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY idx_type (type),
+            KEY idx_post (post_id),
+            KEY idx_created (created_at)
+        ) {$charset_collate};";
+
+        foreach ($sql2 as $statement) {
+            dbDelta($statement);
+        }
     }
 }
 

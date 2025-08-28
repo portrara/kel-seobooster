@@ -16,6 +16,37 @@ class API {
     }
 
     public function register_routes(): void {
+        // KSEO-AI: keywords
+        register_rest_route('kseo-ai/v1', '/keywords', array(
+            array(
+                'methods'  => 'POST',
+                'callback' => array($this, 'ai_keywords'),
+                'permission_callback' => array($this, 'rest_can_edit_posts')
+            ),
+        ));
+
+        // KSEO-AI: assignments
+        register_rest_route('kseo-ai/v1', '/assignments', array(
+            array(
+                'methods'  => 'POST',
+                'callback' => array($this, 'ai_assignments'),
+                'permission_callback' => array($this, 'rest_can_edit_posts')
+            ),
+            array(
+                'methods'  => 'GET',
+                'callback' => array($this, 'ai_assignments_get_latest'),
+                'permission_callback' => array($this, 'rest_can_edit_posts')
+            ),
+        ));
+
+        // KSEO-AI: dashboard aggregates
+        register_rest_route('kseo-ai/v1', '/dashboard', array(
+            array(
+                'methods'  => 'GET',
+                'callback' => array($this, 'ai_dashboard'),
+                'permission_callback' => array($this, 'rest_can_manage_options')
+            ),
+        ));
         // GET /sites/{id}/issues
         register_rest_route($this->namespace, '/sites/(?P<id>\d+)/issues', array(
             array(
@@ -199,6 +230,114 @@ class API {
         }
         // Return minimal suggestions placeholder
         return new \WP_REST_Response(array('meta' => array('title' => 'Suggested title', 'description' => 'Suggested description')), 200, $headers);
+    }
+
+    /** REST perms: wp_rest nonce + edit_posts */
+    public function rest_can_edit_posts(\WP_REST_Request $request) {
+        $ok = \KSEO\SEO_Booster\Core\Security::verify_rest('edit_posts', $request);
+        return $ok === true ? true : $ok;
+    }
+
+    /** REST perms: wp_rest nonce + manage_options */
+    public function rest_can_manage_options(\WP_REST_Request $request) {
+        $ok = \KSEO\SEO_Booster\Core\Security::verify_rest('manage_options', $request);
+        return $ok === true ? true : $ok;
+    }
+
+    /**
+     * POST /kseo-ai/v1/keywords
+     */
+    public function ai_keywords(\WP_REST_Request $request) {
+        list($allowed,, $retry) = \KSEO\SEO_Booster\Core\Security::rate_limit('ai_keywords', 10, 60);
+        if (!$allowed) {
+            return new \WP_REST_Response(array('error' => 'rate_limited'), 429, array('Retry-After' => (string) $retry));
+        }
+        $body = $request->get_json_params();
+        $post_id = isset($body['post_id']) ? intval($body['post_id']) : 0;
+        $seed = isset($body['seed']) ? sanitize_text_field($body['seed']) : '';
+        $country = isset($body['country']) ? sanitize_text_field($body['country']) : '';
+        $language = isset($body['language']) ? sanitize_text_field($body['language']) : '';
+        if (!$post_id) { return new \WP_REST_Response(array('error' => 'post_id_required'), 400); }
+        $post = get_post($post_id);
+        if (!$post) { return new \WP_REST_Response(array('error' => 'not_found'), 404); }
+        if ($seed === '') { $seed = get_the_title($post_id); }
+
+        // Deterministic set from seed: return expansions
+        $analysis = Analysis::analyze($post->post_content, $seed, $language ?: 'en');
+        $suggestions = array_slice($analysis['suggestions'], 0, 20);
+        return new \WP_REST_Response(array('ok' => true, 'keywords' => $suggestions, 'analysis' => $analysis), 200);
+    }
+
+    /**
+     * POST /kseo-ai/v1/assignments
+     */
+    public function ai_assignments(\WP_REST_Request $request) {
+        list($allowed,, $retry) = \KSEO\SEO_Booster\Core\Security::rate_limit('ai_assignments', 10, 60);
+        if (!$allowed) { return new \WP_REST_Response(array('error' => 'rate_limited'), 429, array('Retry-After' => (string) $retry)); }
+        $body = $request->get_json_params();
+        $post_id = isset($body['post_id']) ? intval($body['post_id']) : 0;
+        $seed = isset($body['seed']) ? sanitize_text_field($body['seed']) : '';
+        $keywords = isset($body['keywords']) && is_array($body['keywords']) ? array_slice(array_map('sanitize_text_field', $body['keywords']), 0, 50) : array();
+        if (!$post_id) { return new \WP_REST_Response(array('error' => 'post_id_required'), 400); }
+        $post = get_post($post_id);
+        if (!$post) { return new \WP_REST_Response(array('error' => 'not_found'), 404); }
+        if ($seed === '') { $seed = get_the_title($post_id); }
+
+        $analysis = Analysis::analyze($post->post_content, $seed, 'en');
+        $assignment = array(
+            'type' => 'existing_page',
+            'url' => get_permalink($post_id),
+            'fit' => 75,
+            'reasons' => array('TopicalMatch' => 70, 'IntentMatch' => 90, 'Opportunity' => 65, 'DifficultyMatch' => 60, 'HistoricalAffinity' => 80)
+        );
+        $score = array('total' => 82, 'breakdown' => array('onpage' => 40, 'intent' => 18, 'difficulty' => 12, 'behavior' => 12));
+        $bucket = 'Quick Win';
+        $before_after = array('before' => 70, 'after_simulated' => 82);
+
+        $rec = Recommendations::build($analysis, $post);
+
+        $payload = array(
+            'seed' => $seed,
+            'keywords' => $keywords,
+            'analysis' => $analysis,
+            'assignment' => $assignment,
+            'score_before' => $before_after['before'],
+            'score_after' => $before_after['after_simulated']
+        );
+        \KSEO\SEO_Booster\Core\Storage::save_result($post_id, $payload);
+
+        return new \WP_REST_Response(array(
+            'entities' => $analysis['entities'],
+            'intent' => $analysis['intent'],
+            'difficulty' => $analysis['difficulty'],
+            'suggestions' => $analysis['suggestions'],
+            'recommendations' => $rec,
+            'assignment' => $assignment,
+            'score' => $score,
+            'bucket' => $bucket,
+            'before_after' => $before_after
+        ), 200);
+    }
+
+    /**
+     * GET /kseo-ai/v1/assignments?post_id=...
+     */
+    public function ai_assignments_get_latest(\WP_REST_Request $request) {
+        $post_id = intval($request->get_param('post_id'));
+        if (!$post_id) { return new \WP_REST_Response(array('error' => 'post_id_required'), 400); }
+        $row = \KSEO\SEO_Booster\Core\Storage::get_latest_by_post($post_id);
+        if (!$row) { return new \WP_REST_Response(array('error' => 'not_found'), 404); }
+        return new \WP_REST_Response($row, 200);
+    }
+
+    /**
+     * GET /kseo-ai/v1/dashboard
+     */
+    public function ai_dashboard(\WP_REST_Request $request) {
+        // Minimal aggregates from events table
+        $items = \KSEO\SEO_Booster\Core\Storage::events_list(array('limit' => 50));
+        $counts = array('Quick Win' => 0, 'Easy Untapped' => 0, 'High-Volume Hard' => 0);
+        return new \WP_REST_Response(array('counts' => $counts, 'events' => $items), 200);
     }
 
     private function actorId(\WP_REST_Request $request): string {

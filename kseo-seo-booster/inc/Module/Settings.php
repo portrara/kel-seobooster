@@ -41,6 +41,10 @@ class Settings {
         register_setting('kseo_options', 'kseo_rate_limits', array(
             'sanitize_callback' => array($this, 'sanitize_rate_limits')
         ));
+        // Consolidated AI/integration + runtime options stored under single kseo_ai option
+        register_setting('kseo_options', 'kseo_ai', array(
+            'sanitize_callback' => array($this, 'sanitize_kseo_ai')
+        ));
         
         // Add settings sections
         add_settings_section(
@@ -54,6 +58,12 @@ class Settings {
             'kseo_api_section',
             __('API Configuration', 'kseo-seo-booster'),
             array($this, 'api_section_callback'),
+            'kseo_options'
+        );
+        add_settings_section(
+            'kseo_ai_section',
+            __('AI & Integrations', 'kseo-seo-booster'),
+            function () { echo '<p>' . esc_html__('Manage third-party keys and runtime limits for AI modules.', 'kseo-seo-booster') . '</p>'; },
             'kseo_options'
         );
         
@@ -180,6 +190,58 @@ class Settings {
                         </label>
                     </td>
                 </tr>
+
+                <tr>
+                    <th scope="row">
+                        <label for="kseo_ai_cache_ttl"><?php _e('Cache TTL (hours)', 'kseo-seo-booster'); ?></label>
+                    </th>
+                    <td>
+                        <?php $kseo_ai = get_option('kseo_ai', array()); $cache_ttl = isset($kseo_ai['cache_ttl']) ? intval($kseo_ai['cache_ttl']) : 6; ?>
+                        <input type="number" min="1" max="168" id="kseo_ai_cache_ttl" name="kseo_ai[cache_ttl]" value="<?php echo esc_attr($cache_ttl); ?>" />
+                        <p class="description"><?php _e('Default cache time for heavy operations. Default 6h.', 'kseo-seo-booster'); ?></p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th scope="row">
+                        <label for="kseo_ai_index_ttl"><?php _e('Content Index TTL (hours)', 'kseo-seo-booster'); ?></label>
+                    </th>
+                    <td>
+                        <?php $index_ttl = isset($kseo_ai['index_ttl']) ? intval($kseo_ai['index_ttl']) : 6; ?>
+                        <input type="number" min="1" max="168" id="kseo_ai_index_ttl" name="kseo_ai[index_ttl]" value="<?php echo esc_attr($index_ttl); ?>" />
+                        <p class="description"><?php _e('How long to keep the site-wide content index cached. Default 6h.', 'kseo-seo-booster'); ?></p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th scope="row">
+                        <label for="kseo_ai_max_candidates"><?php _e('Max Candidates', 'kseo-seo-booster'); ?></label>
+                    </th>
+                    <td>
+                        <?php $max_candidates = isset($kseo_ai['max_candidates']) ? intval($kseo_ai['max_candidates']) : 100; ?>
+                        <input type="number" min="10" max="10000" id="kseo_ai_max_candidates" name="kseo_ai[max_candidates]" value="<?php echo esc_attr($max_candidates); ?>" />
+                        <p class="description"><?php _e('Max site-wide pages considered when assigning keywords. Default 100.', 'kseo-seo-booster'); ?></p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th scope="row">
+                        <label for="kseo_ai_max_urls_per_run"><?php _e('Max URLs per Batch Run', 'kseo-seo-booster'); ?></label>
+                    </th>
+                    <td>
+                        <?php $max_urls_per_run = isset($kseo_ai['max_urls_per_run']) ? intval($kseo_ai['max_urls_per_run']) : 10; ?>
+                        <input type="number" min="1" max="500" id="kseo_ai_max_urls_per_run" name="kseo_ai[max_urls_per_run]" value="<?php echo esc_attr($max_urls_per_run); ?>" />
+                        <p class="description"><?php _e('Cron batch size. Default 10.', 'kseo-seo-booster'); ?></p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th scope="row"><?php _e('Weekly Reprocess', 'kseo-seo-booster'); ?></th>
+                    <td>
+                        <?php $weekly = !empty($kseo_ai['weekly_cron_enabled']); ?>
+                        <label><input type="checkbox" name="kseo_ai[weekly_cron_enabled]" value="1" <?php checked($weekly); ?> /> <?php _e('Enable weekly kseo_ai_weekly_reprocess cron', 'kseo-seo-booster'); ?></label>
+                    </td>
+                </tr>
             </table>
             
             <?php submit_button(); ?>
@@ -238,6 +300,18 @@ class Settings {
             <?php settings_fields('kseo_options'); ?>
             
             <table class="form-table">
+                <tr>
+                    <th scope="row"><?php _e('SERP Provider', 'kseo-seo-booster'); ?></th>
+                    <td>
+                        <?php $kseo_ai = get_option('kseo_ai', array()); $provider = isset($kseo_ai['serp_provider']) ? $kseo_ai['serp_provider'] : 'stub'; ?>
+                        <select name="kseo_ai[serp_provider]">
+                            <option value="stub" <?php selected($provider, 'stub'); ?>><?php _e('Stub (deterministic)', 'kseo-seo-booster'); ?></option>
+                            <option value="serpapi" <?php selected($provider, 'serpapi'); ?>>SERP API</option>
+                            <option value="dataforseo" <?php selected($provider, 'dataforseo'); ?>>DataForSEO</option>
+                        </select>
+                        <p class="description"><?php _e('Choose SERP data provider. Stub returns deterministic results.', 'kseo-seo-booster'); ?></p>
+                    </td>
+                </tr>
                 <tr>
                     <th scope="row">
                         <label for="kseo_openai_api_key"><?php _e('OpenAI API Key', 'kseo-seo-booster'); ?></label>
@@ -298,6 +372,37 @@ class Settings {
                         <p class="description"><?php _e('Your Google Ads OAuth client secret.', 'kseo-seo-booster'); ?></p>
                     </td>
                 </tr>
+
+                <tr>
+                    <th scope="row"><label for="kseo_ai_gsc_client_id"><?php _e('GSC Client ID', 'kseo-seo-booster'); ?></label></th>
+                    <td>
+                        <?php $kseo_ai = get_option('kseo_ai', array()); ?>
+                        <input type="text" id="kseo_ai_gsc_client_id" name="kseo_ai[gsc_client_id]" value="<?php echo isset($kseo_ai['gsc_client_id']) ? esc_attr($kseo_ai['gsc_client_id']) : ''; ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="kseo_ai_gsc_client_secret"><?php _e('GSC Client Secret', 'kseo-seo-booster'); ?></label></th>
+                    <td>
+                        <input type="password" id="kseo_ai_gsc_client_secret" name="kseo_ai[gsc_client_secret]" value="" class="regular-text" autocomplete="new-password" />
+                        <?php if (!empty($kseo_ai['gsc_client_secret'])): ?><p class="description"><?php _e('A secret is stored. Leave blank to keep.', 'kseo-seo-booster'); ?></p><?php endif; ?>
+                        <button type="button" class="button kseo-test-api-btn" data-api="gsc"><?php _e('Test GSC', 'kseo-seo-booster'); ?></button>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="kseo_ai_ga4_json_key"><?php _e('GA4 Service JSON', 'kseo-seo-booster'); ?></label></th>
+                    <td>
+                        <textarea id="kseo_ai_ga4_json_key" name="kseo_ai[ga4_json_key]" rows="4" class="large-text" placeholder="{\"type\":\"service_account\",...}"></textarea>
+                        <?php if (!empty($kseo_ai['ga4_json_key'])): ?><p class="description"><?php _e('A key is stored. Leave blank to keep.', 'kseo-seo-booster'); ?></p><?php endif; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="kseo_ai_rank_api_key"><?php _e('Rank API Key', 'kseo-seo-booster'); ?></label></th>
+                    <td>
+                        <input type="password" id="kseo_ai_rank_api_key" name="kseo_ai[rank_api_key]" value="" class="regular-text" autocomplete="new-password" />
+                        <?php if (!empty($kseo_ai['rank_api_key'])): ?><p class="description"><?php _e('A key is stored. Leave blank to keep.', 'kseo-seo-booster'); ?></p><?php endif; ?>
+                        <button type="button" class="button kseo-test-api-btn" data-api="rank"><?php _e('Test Rank', 'kseo-seo-booster'); ?></button>
+                    </td>
+                </tr>
             </table>
             
             <?php submit_button(); ?>
@@ -337,6 +442,43 @@ class Settings {
                 </tr>
             </table>
             <?php submit_button(__('Save Feature Flags', 'kseo-seo-booster')); ?>
+        </form>
+
+        <hr/>
+        <h2><?php _e('Alerts', 'kseo-seo-booster'); ?></h2>
+        <form method="post" action="options.php">
+            <?php settings_fields('kseo_options'); ?>
+            <?php $kseo_ai = get_option('kseo_ai', array()); ?>
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><?php _e('Email Alerts', 'kseo-seo-booster'); ?></th>
+                    <td>
+                        <label><input type="checkbox" name="kseo_ai[alert_email_enabled]" value="1" <?php checked(!empty($kseo_ai['alert_email_enabled'])); ?> /> <?php _e('Enable email alerts', 'kseo-seo-booster'); ?></label>
+                        <br/>
+                        <input type="email" name="kseo_ai[alert_email_to]" value="<?php echo isset($kseo_ai['alert_email_to']) ? esc_attr($kseo_ai['alert_email_to']) : get_option('admin_email'); ?>" class="regular-text" placeholder="name@example.com" />
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php _e('Slack Webhook', 'kseo-seo-booster'); ?></th>
+                    <td>
+                        <input type="url" name="kseo_ai[slack_webhook_url]" value="<?php echo isset($kseo_ai['slack_webhook_url']) ? esc_attr($kseo_ai['slack_webhook_url']) : ''; ?>" class="regular-text" placeholder="https://hooks.slack.com/services/..." />
+                        <p class="description"><?php _e('Optional: Send alerts to Slack.', 'kseo-seo-booster'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php _e('Alert Types', 'kseo-seo-booster'); ?></th>
+                    <td>
+                        <label><input type="checkbox" name="kseo_ai[alert_decay_enabled]" value="1" <?php checked(!empty($kseo_ai['alert_decay_enabled'])); ?> /> <?php _e('Traffic Decay', 'kseo-seo-booster'); ?></label><br/>
+                        <label><input type="checkbox" name="kseo_ai[alert_cannibal_enabled]" value="1" <?php checked(!empty($kseo_ai['alert_cannibal_enabled'])); ?> /> <?php _e('Keyword Cannibalization', 'kseo-seo-booster'); ?></label>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(__('Save Alerts', 'kseo-seo-booster')); ?>
+        </form>
+
+        <form method="post" style="margin-top:10px;">
+            <?php wp_nonce_field('kseo_security_nonce', 'kseo_security_nonce'); ?>
+            <button type="submit" name="kseo_send_test_alert" class="button"><?php _e('Send Test Alert', 'kseo-seo-booster'); ?></button>
         </form>
 
         <hr/>
@@ -619,6 +761,51 @@ class Settings {
         if (!empty($value['client_secret'])) {
             $out['client_secret'] = 'enc:' . \KSEO\SEO_Booster\Security\Crypto::encrypt(sanitize_text_field($value['client_secret']));
         }
+        return $out;
+    }
+
+    /** Inline process: test alert button */
+    private function maybe_send_test_alert() {
+        if (isset($_POST['kseo_send_test_alert']) && check_admin_referer('kseo_security_nonce', 'kseo_security_nonce')) {
+            \KSEO\SEO_Booster\Core\Alerts::send('test', array('message' => 'This is a test alert from KSEO'));
+            echo '<div class="notice notice-success"><p>' . esc_html__('Test alert dispatched (check email/Slack).', 'kseo-seo-booster') . '</p></div>';
+        }
+    }
+
+    /**
+     * Sanitize consolidated kseo_ai option
+     */
+    public function sanitize_kseo_ai($value) {
+        $current = get_option('kseo_ai', array());
+        $in = is_array($value) ? $value : array();
+        $out = $current;
+
+        // Plain fields
+        if (isset($in['gsc_client_id'])) { $out['gsc_client_id'] = sanitize_text_field($in['gsc_client_id']); }
+        if (isset($in['serp_provider'])) { $out['serp_provider'] = sanitize_text_field($in['serp_provider']); }
+        if (isset($in['cache_ttl'])) { $out['cache_ttl'] = max(1, min(168, intval($in['cache_ttl']))); }
+        if (isset($in['index_ttl'])) { $out['index_ttl'] = max(1, min(168, intval($in['index_ttl']))); }
+        if (isset($in['max_candidates'])) { $out['max_candidates'] = max(1, min(10000, intval($in['max_candidates']))); }
+        if (isset($in['max_urls_per_run'])) { $out['max_urls_per_run'] = max(1, min(500, intval($in['max_urls_per_run']))); }
+        $out['weekly_cron_enabled'] = !empty($in['weekly_cron_enabled']) ? 1 : 0;
+        $out['alert_email_enabled'] = !empty($in['alert_email_enabled']) ? 1 : 0;
+        if (isset($in['alert_email_to'])) { $out['alert_email_to'] = sanitize_email($in['alert_email_to']); }
+        if (isset($in['slack_webhook_url'])) { $out['slack_webhook_url'] = esc_url_raw($in['slack_webhook_url']); }
+        $out['alert_decay_enabled'] = !empty($in['alert_decay_enabled']) ? 1 : 0;
+        $out['alert_cannibal_enabled'] = !empty($in['alert_cannibal_enabled']) ? 1 : 0;
+
+        // Secrets: overwrite only if provided
+        if (!empty($in['gsc_client_secret'])) {
+            $out['gsc_client_secret'] = 'enc:' . \KSEO\SEO_Booster\Security\Crypto::encrypt(sanitize_text_field($in['gsc_client_secret']));
+        }
+        if (!empty($in['ga4_json_key'])) {
+            $ga = is_string($in['ga4_json_key']) ? trim($in['ga4_json_key']) : '';
+            $out['ga4_json_key'] = 'enc:' . \KSEO\SEO_Booster\Security\Crypto::encrypt($ga);
+        }
+        if (!empty($in['rank_api_key'])) {
+            $out['rank_api_key'] = 'enc:' . \KSEO\SEO_Booster\Security\Crypto::encrypt(sanitize_text_field($in['rank_api_key']));
+        }
+
         return $out;
     }
     

@@ -98,6 +98,9 @@ class Plugin {
         
         // Add Open Graph tags
         add_action('wp_head', array($this, 'output_og_tags'), 3);
+
+        // Initialize cron/jobs
+        \KSEO\SEO_Booster\Core\Jobs::init();
     }
     
     /**
@@ -113,6 +116,10 @@ class Plugin {
         
         // AJAX actions for bulk operations
         add_action('wp_ajax_kseo_bulk_audit', array($this, 'ajax_bulk_audit'));
+
+        // Admin-AJAX: CSV export and apply draft
+        add_action('wp_ajax_kseo_ai_export_csv', array($this, 'ajax_kseo_ai_export_csv'));
+        add_action('wp_ajax_kseo_ai_apply_draft', array($this, 'ajax_kseo_ai_apply_draft'));
     }
     
     /**
@@ -149,6 +156,7 @@ class Plugin {
             wp_localize_script('kseo-admin', 'kseo_ajax', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('kseo_nonce'),
+                'rest_nonce' => wp_create_nonce('wp_rest'),
                 'strings' => array(
                     'generating' => __('Generating...', 'kseo-seo-booster'),
                     'saving' => __('Saving...', 'kseo-seo-booster'),
@@ -396,5 +404,77 @@ class Plugin {
         } else {
             wp_send_json_error(__('Bulk Audit module not available', 'kseo-seo-booster'));
         }
+    }
+
+    /**
+     * AJAX: Export CSV
+     */
+    public function ajax_kseo_ai_export_csv() {
+        check_ajax_referer('kseo_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(__('Permission denied', 'kseo-seo-booster'));
+        }
+        list($allowed,, $retry) = \KSEO\SEO_Booster\Core\Security::rate_limit('kseo_ai_export_csv', 10, 60);
+        if (!$allowed) {
+            status_header(429);
+            header('Content-Type: application/json');
+            echo wp_json_encode(array('error' => 'rate_limited', 'retry_after' => $retry));
+            exit;
+        }
+        nocache_headers();
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=kseo-dashboard.csv');
+        $out = fopen('php://output', 'w');
+        fputcsv($out, array('Type', 'Post ID', 'Details', 'Created At'));
+        $rows = \KSEO\SEO_Booster\Core\Storage::events_list(array('limit' => 500));
+        foreach ($rows as $r) {
+            fputcsv($out, array($r['type'], $r['post_id'], wp_json_encode($r['details']), $r['created_at']));
+        }
+        fclose($out);
+        exit;
+    }
+
+    /**
+     * AJAX/REST: Apply recommendations to draft clone
+     */
+    public function ajax_kseo_ai_apply_draft() {
+        check_ajax_referer('kseo_nonce', 'nonce');
+        $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+        if (!$post_id || !current_user_can('edit_post', $post_id)) {
+            wp_send_json_error(__('Permission denied', 'kseo-seo-booster'));
+        }
+        list($allowed,, $retry) = \KSEO\SEO_Booster\Core\Security::rate_limit('kseo_ai_apply_draft', 5, 60);
+        if (!$allowed) {
+            wp_send_json_error(array('error' => 'rate_limited', 'retry_after' => $retry), 429);
+        }
+        $rec = isset($_POST['recommendations']) ? json_decode(stripslashes((string) $_POST['recommendations']), true) : array();
+        $src = get_post($post_id);
+        if (!$src) { wp_send_json_error(__('Source not found', 'kseo-seo-booster')); }
+        $new_post = array(
+            'post_type' => $src->post_type,
+            'post_title' => isset($rec['title']) ? sanitize_text_field($rec['title']) : $src->post_title,
+            'post_status' => 'draft',
+            'post_content' => self::prepend_outline($src->post_content, isset($rec['outline']) ? (array) $rec['outline'] : array())
+        );
+        $draft_id = wp_insert_post($new_post, true);
+        if (is_wp_error($draft_id)) { wp_send_json_error($draft_id->get_error_message()); }
+        if (isset($rec['meta']['description'])) {
+            update_post_meta($draft_id, '_kseo_meta_description', sanitize_text_field($rec['meta']['description']));
+        }
+        if (isset($rec['schema'])) {
+            update_post_meta($draft_id, '_kseo_schema_ld', wp_json_encode($rec['schema']));
+        }
+        \KSEO\SEO_Booster\Core\Storage::events_log('applied_draft', array('post_id' => $draft_id, 'details' => array('source' => $post_id)));
+        wp_send_json_success(array('ok' => true, 'draft_post_id' => $draft_id));
+    }
+
+    private static function prepend_outline(string $body, array $outline): string {
+        if (empty($outline)) { return $body; }
+        $html = "\n";
+        foreach ($outline as $sec) {
+            $h2 = isset($sec['h2']) ? sanitize_text_field($sec['h2']) : '';
+            if ($h2 !== '') { $html .= '<h2>' . esc_html($h2) . '</h2>' . "\n"; }
+        }
+        return $html . $body;
     }
 } 
